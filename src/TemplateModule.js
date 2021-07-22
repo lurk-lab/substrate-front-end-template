@@ -1,68 +1,87 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Grid, Card, Statistic } from 'semantic-ui-react';
+import { Form, Input, Grid, Statistic } from 'semantic-ui-react';
 
 import { useSubstrate } from './substrate-lib';
 import { TxButton } from './substrate-lib/components';
 
-function Main (props) {
+export function Main (props) {
   const { api } = useSubstrate();
   const { accountPair } = props;
 
   // The transaction submission status
   const [status, setStatus] = useState('');
 
-  // The currently stored value
-  const [currentValue, setCurrentValue] = useState(0);
-  const [formValue, setFormValue] = useState(0);
+  // The currently stored values
+  const [cid, setCid] = useState(0);
+  const [data, setData] = useState(0);
+
+  const [currentValue, setCurrentValue] = useState('');
+  const [formValue, setFormValue] = useState('');
 
   useEffect(() => {
     let unsubscribe;
-    api.query.templateModule.something(newValue => {
-      // The storage value is an Option<u32>
+      api.query.templateModule.cid(newValue => {
+      // The storage value is an Option
       // So we have to check whether it is None first
       // There is also unwrapOr
-      if (newValue.isNone) {
-        setCurrentValue('<None>');
-      } else {
-        setCurrentValue(newValue.unwrap().toNumber());
-      }
-    }).then(unsub => {
-      unsubscribe = unsub;
+          if (newValue.isNone) {
+              setCurrentValue('<None>');
+          } else {
+              setCurrentValue(newValue.unwrap().toString());
+              let newVal = newValue.unwrap();
+              setCid(newVal[0].toString());
+              setData(newVal[1].toNumber());
+          }
+      }).then(unsub => {
+          unsubscribe = unsub;
     })
-      .catch(console.error);
+          .catch(console.error);
 
-    return () => unsubscribe && unsubscribe();
+      return () => unsubscribe && unsubscribe();
   }, [api.query.templateModule]);
 
   return (
-    <Grid.Column width={8}>
-      <h1>Template Module</h1>
-      <Card centered>
-        <Card.Content textAlign='center'>
-          <Statistic
-            label='Current Value'
-            value={currentValue}
-          />
-        </Card.Content>
-      </Card>
+    <Grid.Column width={20} style={{ textAlign: 'center' }}>
+      <h1>IPLD Storage</h1>
+        <Statistic
+          label='Currently Stored Data'
+          value={data}
+          size='mini'
+        />
+        <Statistic
+          label='Currently Stored CID'
+          value={cid}
+          size='mini'
+        />
       <Form>
         <Form.Field>
           <Input
-            label='New Value'
-            state='newValue'
-            type='number'
+            label='IPLD Input'
+            type='string'
             onChange={(_, { value }) => setFormValue(value)}
           />
         </Form.Field>
         <Form.Field style={{ textAlign: 'center' }}>
           <TxButton
             accountPair={accountPair}
-            label='Store Something'
+            label='Store IPLD data'
             type='SIGNED-TX'
             setStatus={setStatus}
             attrs={{
               palletRpc: 'templateModule',
-              callable: 'doSomething',
+              callable: 'storeIpld',
+              inputParams: [formValue],
+              paramFields: [true]
+            }}
+          />
+          <TxButton
+            accountPair={accountPair}
+            label='Get IPLD data'
+            type='SIGNED-TX'
+            setStatus={setStatus}
+            attrs={{
+              palletRpc: 'templateModule',
+              callable: 'retrieveIpld',
               inputParams: [formValue],
               paramFields: [true]
             }}
@@ -76,7 +95,7 @@ function Main (props) {
 
 export default function TemplateModule (props) {
   const { api } = useSubstrate();
-  return api.query.templateModule && api.query.templateModule.something
+  return api.query.templateModule && api.query.templateModule.cid
     ? <Main {...props} />
     : null;
 }

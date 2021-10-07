@@ -61,3 +61,4 @@ export default function TemplateModule (props) {
     ? <Main {...props} />
     : null;
 }
+
